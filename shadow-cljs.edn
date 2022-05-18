@@ -1,0 +1,13 @@
+{:source-paths ["src"]
+ :dependencies [[binaryage/devtools "1.0.3"]
+                [nrepl "0.9.0"]
+                [reagent "1.1.1"]
+                [cljs-ajax "0.7.5"]]
+ :builds       {:app {:target     :browser
+                      :output-dir "public/js"
+                      :asset-path "/js"
+                      :modules    {:app {:entries [moviedb.core]}}
+                      :devtools   {:after-load moviedb.core/mount-root}}}
+
+ :dev-http     {3000 {:root    "public"
+                      :handler user/app}}}
