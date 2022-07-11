@@ -2,36 +2,46 @@
   (:require
    [reagent.core :as r]
    [reagent.dom :as d]
-   [ajax.core :refer [GET json-response-format]]))
+   [moviedb.data :as data]
+   [re-frame.core :as rf]))
 
 ;; -------------------------
 ;; Views
 
 (def movie-title (r/atom ""))
-(def omdb-resp (r/atom ""))
 
-(defn handle-omdb-resp [resp]
-  (.log js/console "Response:" (:Title resp) (:Year resp))
-  (reset! omdb-resp resp)
-  (swap! omdb-resp assoc :loaded true))
+(defn streaming-card [data]
+  [:div {:style {:margin "5px"
+                 :border "1px solid white"
+                 :padding "10px"}}
+   [:a {:href (:web_url data)
+        :target "_blank"}
+   [:p {:style {:font-size "25px"}} (:name data)]]
+   [:p {:style {:font-size "15px"}} (:format data)]
+   [:p {:style {:color "green"}} (:price data)]])
 
 (defn home-page []
   [:div {:class "home-container"}
    [:h2 "Enter a movie title:"]
-   [:form {:on-submit (fn [e] 
+   [:form {:on-submit (fn [e]
                         (.preventDefault e)
-                        (GET "http://www.omdbapi.com"
-                          {:params {:apikey "a74b26be" :t @movie-title}
-                           :handler handle-omdb-resp
-                           :response-format (json-response-format {:keywords? true})}))}
+                        (rf/dispatch [:make-omdb-req @movie-title]))}
     [:input {:type "input"
-             :on-change #(reset! movie-title (.-value (.-target %)))
-             }]]
-   (when (:loaded @omdb-resp)
+             :on-change #(reset! movie-title (.-value (.-target %)))}]]
+   (let [omdb-resp (rf/subscribe [:omdb-resp])
+         omdb-data (:resp @omdb-resp)
+         wm-resp (rf/subscribe [:wm-resp])]
      [:<>
-      [:img {:src (:Poster @omdb-resp)}]
-      [:h2 (str "Year: " (:Year @omdb-resp))]
-      [:h4 (:Plot @omdb-resp)]])])
+      (when (:loaded @omdb-resp)
+        [:<>
+         [:img {:src (:Poster omdb-data)}]
+         [:h2 (str "Year: " (:Year omdb-data))]
+         [:h4 (:Plot omdb-data)]])
+      (when @wm-resp
+        [:div {:style {:display "flex"
+                       :flex-wrap "wrap"}}
+         (map (fn [streaming-data]
+                [streaming-card streaming-data]) @wm-resp)])])])
 
 ;; -------------------------
 ;; Initialize app
